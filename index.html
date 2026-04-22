@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuimiLingo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f0f4ff;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+#app{width:100%;max-width:680px;padding:1rem}
+
+/* Header */
+.header{display:flex;align-items:center;gap:12px;padding:1rem 0 .5rem}
+.logo{font-size:1.6rem;font-weight:700;color:#3b3bdb;letter-spacing:-1px}
+.logo span{color:#f5a623}
+.xp-bar-wrap{flex:1;height:10px;background:#dde;border-radius:99px;overflow:hidden}
+.xp-bar{height:100%;background:linear-gradient(90deg,#3b3bdb,#6c63ff);border-radius:99px;transition:width .4s}
+.xp-label{font-size:12px;color:#666;white-space:nowrap}
+
+/* Day selector */
+.days{display:flex;gap:8px;margin:1rem 0;flex-wrap:wrap}
+.day-btn{padding:8px 16px;border-radius:99px;border:2px solid #dde;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:#555}
+.day-btn.active{background:#3b3bdb;color:#fff;border-color:#3b3bdb}
+.day-btn.locked{opacity:.4;cursor:not-allowed}
+.day-btn.done{border-color:#22c55e;color:#22c55e}
+
+/* Card */
+.card{background:#fff;border-radius:20px;border:1.5px solid #e0e4ff;padding:1.5rem;margin-bottom:1rem}
+.day-title{font-size:1.1rem;font-weight:700;color:#3b3bdb;margin-bottom:.25rem}
+.day-sub{font-size:.85rem;color:#888;margin-bottom:1.2rem}
+
+/* Progress */
+.prog{display:flex;gap:6px;margin-bottom:1.2rem;flex-wrap:wrap}
+.prog-dot{width:14px;height:14px;border-radius:50%;background:#eee;transition:background .3s}
+.prog-dot.ok{background:#22c55e}
+.prog-dot.fail{background:#ef4444}
+.prog-dot.current{background:#f5a623;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+/* Question */
+.q-label{font-size:.75rem;font-weight:700;color:#888;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.5rem}
+.q-text{font-size:1.05rem;font-weight:600;color:#1a1a2e;margin-bottom:1.2rem;line-height:1.5}
+.q-img{font-size:3rem;text-align:center;margin-bottom:.75rem}
+
+/* Options */
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.opt{padding:12px 16px;border-radius:14px;border:2px solid #dde;background:#f8f9ff;font-size:.95rem;font-weight:500;cursor:pointer;transition:all .15s;text-align:center;color:#333}
+.opt:hover:not(.disabled){background:#eef;border-color:#a0a0f0;transform:translateY(-1px)}
+.opt.selected{border-color:#3b3bdb;background:#e8e8ff;color:#3b3bdb}
+.opt.correct{border-color:#22c55e;background:#dcfce7;color:#16a34a}
+.opt.wrong{border-color:#ef4444;background:#fee2e2;color:#dc2626}
+.opt.disabled{cursor:default}
+.opt.reveal-correct{border-color:#22c55e;background:#dcfce7;color:#16a34a}
+
+/* Match game */
+.match-area{display:flex;gap:12px}
+.match-col{flex:1;display:flex;flex-direction:column;gap:8px}
+.match-item{padding:10px 12px;border-radius:12px;border:2px solid #dde;background:#f8f9ff;font-size:.9rem;cursor:pointer;text-align:center;transition:all .15s;color:#333}
+.match-item:hover{border-color:#a0a0f0}
+.match-item.sel{border-color:#3b3bdb;background:#e8e8ff;color:#3b3bdb}
+.match-item.matched-ok{border-color:#22c55e;background:#dcfce7;color:#16a34a;cursor:default}
+.match-item.matched-fail{border-color:#ef4444;background:#fee2e2;color:#dc2626;cursor:default}
+
+/* Feedback */
+.feedback{border-radius:14px;padding:14px 18px;margin:1rem 0;font-size:.95rem;font-weight:600;display:none}
+.feedback.show{display:block}
+.feedback.ok{background:#dcfce7;color:#15803d;border:1.5px solid #86efac}
+.feedback.fail{background:#fee2e2;color:#b91c1c;border:1.5px solid #fca5a5}
+
+/* Button */
+.btn{display:block;width:100%;padding:14px;background:#3b3bdb;color:#fff;border:none;border-radius:14px;font-size:1rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.5rem}
+.btn:hover{background:#2d2db0;transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn.secondary{background:#f0f4ff;color:#3b3bdb;border:2px solid #3b3bdb}
+.btn.secondary:hover{background:#e0e4ff}
+
+/* Result screen */
+.result{text-align:center;padding:1.5rem}
+.result .trophy{font-size:4rem;margin-bottom:1rem}
+.result h2{font-size:1.4rem;font-weight:700;color:#1a1a2e;margin-bottom:.5rem}
+.result p{color:#666;margin-bottom:1.5rem}
+.score-big{font-size:3rem;font-weight:800;color:#3b3bdb}
+.score-label{font-size:.85rem;color:#888;margin-bottom:1.5rem}
+.stars{font-size:2rem;margin-bottom:1rem;letter-spacing:4px}
+
+/* Periodic table mini */
+.pt-grid{display:grid;gap:3px;grid-template-columns:repeat(9,1fr);margin-bottom:1rem}
+.el-box{border-radius:6px;padding:4px 2px;text-align:center;cursor:pointer;transition:transform .15s;border:1.5px solid transparent}
+.el-box:hover{transform:scale(1.1);z-index:10}
+.el-box .sym{font-size:.85rem;font-weight:700}
+.el-box .num{font-size:.55rem;color:rgba(0,0,0,.5)}
+.el-nonmetal{background:#dcfce7;border-color:#86efac}
+.el-metal{background:#dbeafe;border-color:#93c5fd}
+.el-noble{background:#f3e8ff;border-color:#d8b4fe}
+.el-halogen{background:#fff7ed;border-color:#fdba74}
+.el-metalloid{background:#fef9c3;border-color:#fde047}
+.el-tip{font-size:.8rem;color:#888;margin-bottom.5rem;text-align:center}
+
+/* Tooltip */
+.el-tooltip{position:fixed;background:#1a1a2e;color:#fff;border-radius:10px;padding:8px 14px;font-size:.82rem;pointer-events:none;z-index:100;display:none;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="el-tooltip" id="tooltip"></div>
+
+<script>
+const DAYS = [
+  {
+    id:1, title:"Tabla Periódica", sub:"Elementos, símbolos y familias",
+    icon:"⚗️", minScore:80,
+    questions:[
+      {type:"mc",q:"¿Cuál es el símbolo del Oxígeno?",opts:["O","Ox","Og","On"],ans:0,
+        fact:"El Oxígeno (O) tiene número atómico 8 y es esencial para la vida."},
+      {type:"mc",q:"¿Qué elemento tiene símbolo 'Fe'?",opts:["Fósforo","Hierro","Flúor","Francio"],ans:1,
+        fact:"Fe viene del latín 'ferrum'. El Hierro es el metal más usado por humanos."},
+      {type:"mc",q:"¿Cuál es el gas más abundante en el aire?",opts:["Oxígeno","Hidrógeno","Nitrógeno","Argón"],ans:2,
+        fact:"El Nitrógeno (N₂) representa el 78% del aire que respiramos."},
+      {type:"mc",q:"¿Cuál de estos es un gas noble?",opts:["Cloro","Sodio","Helio","Carbono"],ans:2,
+        fact:"Los gases nobles (grupo 18) no reaccionan fácilmente. Helio (He) es el más ligero."},
+      {type:"mc",q:"¿Qué símbolo corresponde al Oro?",opts:["Ag","Pb","Au","Cu"],ans:2,
+        fact:"Au viene del latín 'aurum'. El Oro es símbolo de riqueza desde la antigüedad."},
+      {type:"mc",q:"¿Cuál es el elemento más ligero de la tabla periódica?",opts:["Helio","Litio","Hidrógeno","Berilio"],ans:2,
+        fact:"Hidrógeno (H) tiene número atómico 1 y es el más abundante en el universo."},
+      {type:"mc",q:"¿Qué símbolo corresponde al Sodio?",opts:["So","Sa","Na","Ni"],ans:2,
+        fact:"Na viene del latín 'natrium'. El Sodio es clave para la sal de mesa (NaCl)."},
+      {type:"match",q:"Une cada símbolo con su elemento:",
+        pairs:[["H","Hidrógeno"],["C","Carbono"],["N","Nitrógeno"],["O","Oxígeno"]],
+        fact:"Estos 4 elementos forman la base de la química de la vida (CHON)."},
+      {type:"mc",q:"¿En qué grupo están los metales alcalinos?",opts:["Grupo 1","Grupo 17","Grupo 18","Grupo 8"],ans:0,
+        fact:"Grupo 1: Li, Na, K, Rb, Cs, Fr. Muy reactivos con el agua."},
+      {type:"mc",q:"¿Cuál es el símbolo del Calcio?",opts:["Ca","Cl","Co","Cr"],ans:0,
+        fact:"Ca tiene número atómico 20. El Calcio es esencial para los huesos."},
+    ]
+  },
+  {
+    id:2, title:"Propiedades de los Elementos", sub:"Estados, grupos y características",
+    icon:"🔬", minScore:80,
+    questions:[
+      {type:"mc",q:"¿En qué estado físico se encuentra el mercurio a temperatura ambiente?",opts:["Sólido","Líquido","Gas","Plasma"],ans:1,
+        fact:"El mercurio (Hg) es el único metal líquido a temperatura ambiente normal."},
+      {type:"mc",q:"¿Cuál es el número atómico del Carbono?",opts:["4","6","8","12"],ans:1,
+        fact:"Carbono tiene 6 protones. El número 12 es su masa atómica más común."},
+      {type:"mc",q:"¿Qué propiedad mide la escala de Mohs?",opts:["Temperatura de fusión","Dureza","Densidad","Conductividad"],ans:1,
+        fact:"La escala de Mohs va del 1 (talco) al 10 (diamante), el más duro."},
+      {type:"mc",q:"¿Cuál de estos NO es un metal?",opts:["Cobre","Hierro","Azufre","Aluminio"],ans:2,
+        fact:"El Azufre (S) es un no-metal. Es sólido amarillo y huele a huevo podrido."},
+      {type:"mc",q:"¿Qué elemento es el mejor conductor eléctrico?",opts:["Cobre","Oro","Plata","Aluminio"],ans:2,
+        fact:"La Plata (Ag) es el mejor conductor, pero el Cobre se usa más por su costo."},
+      {type:"mc",q:"¿Cuántos electrones tiene el Hidrógeno?",opts:["0","1","2","3"],ans:1,
+        fact:"H tiene 1 protón y 1 electrón. Por eso forma enlaces con tanta facilidad."},
+      {type:"mc",q:"¿Qué grupo de elementos es el más reactivo?",opts:["Gases nobles","Metales alcalinos","Metales de transición","Halógenos"],ans:1,
+        fact:"Los metales alcalinos (Na, K, Li...) reaccionan violentamente con el agua."},
+      {type:"match",q:"Une el estado físico correcto con el elemento:",
+        pairs:[["Hierro (Fe)","Sólido"],["Oxígeno (O₂)","Gas"],["Mercurio (Hg)","Líquido"],["Bromo (Br₂)","Líquido"]],
+        fact:"A temperatura ambiente, la mayoría de metales son sólidos. Pocas excepciones como Hg y Br."},
+      {type:"mc",q:"¿Cuál es la capa más externa de un átomo?",opts:["Núcleo","Protón","Capa de valencia","Neutrón"],ans:2,
+        fact:"La capa de valencia determina cómo reacciona un elemento con otros."},
+      {type:"mc",q:"¿Qué partícula NO tiene carga eléctrica?",opts:["Protón","Electrón","Neutrón","Ion"],ans:2,
+        fact:"Los neutrones son neutros. Protones tienen carga + y electrones tienen carga -."},
+    ]
+  },
+  {
+    id:3, title:"Tipos de Enlace", sub:"Iónico, covalente y metálico",
+    icon:"🔗", minScore:80,
+    questions:[
+      {type:"mc",q:"¿Qué tipo de enlace forma la sal de mesa (NaCl)?",opts:["Covalente","Metálico","Iónico","Hidrógeno"],ans:2,
+        fact:"NaCl: el Sodio cede un electrón al Cloro. Se forman iones Na⁺ y Cl⁻."},
+      {type:"mc",q:"En un enlace covalente, los átomos:",opts:["Se transfieren electrones","Comparten electrones","Pierden todos los electrones","No interactúan"],ans:1,
+        fact:"En el enlace covalente los electrones se comparten. Ejemplo: H₂O, CO₂."},
+      {type:"mc",q:"¿Cuál de estas es una molécula con enlace covalente?",opts:["NaCl","MgO","H₂O","KBr"],ans:2,
+        fact:"El agua (H₂O) tiene dos enlaces covalentes: cada H comparte electrones con O."},
+      {type:"mc",q:"¿Qué tipo de enlace tienen los metales entre sí?",opts:["Iónico","Covalente","Metálico","Van der Waals"],ans:2,
+        fact:"El enlace metálico: electrones libres rodean iones positivos. Por eso conduce electricidad."},
+      {type:"mc",q:"¿Cuál es el compuesto iónico más común?",opts:["Agua (H₂O)","Sal (NaCl)","Dióxido de carbono (CO₂)","Metano (CH₄)"],ans:1,
+        fact:"NaCl es la sal de mesa que usamos en comida. Ejemplo clásico de compuesto iónico."},
+      {type:"match",q:"Une el tipo de enlace con su ejemplo:",
+        pairs:[["Iónico","NaCl"],["Covalente","H₂O"],["Metálico","Fe (hierro)"],["Covalente polar","HCl"]],
+        fact:"Los enlaces determinan las propiedades del material: conductividad, punto de fusión, dureza."},
+      {type:"mc",q:"¿Un compuesto iónico en qué se disuelve bien?",opts:["Aceite","Gasolina","Agua","Alcohol"],ans:2,
+        fact:"'Lo semejante disuelve a lo semejante'. El agua polar disuelve compuestos iónicos."},
+      {type:"mc",q:"¿Cuántos electrones comparte el enlace doble (=)?",opts:["1","2","4","6"],ans:2,
+        fact:"El enlace doble comparte 4 electrones (2 pares). Ejemplo: O₂, CO₂."},
+      {type:"mc",q:"¿Qué propiedad tienen los metales gracias al enlace metálico?",opts:["Son frágiles","Conducen electricidad","No se doblan","Son transparentes"],ans:1,
+        fact:"Los electrones libres del enlace metálico permiten la conducción eléctrica y térmica."},
+      {type:"mc",q:"La molécula de Oxígeno (O₂) tiene enlace:",opts:["Iónico","Covalente simple","Covalente doble","Metálico"],ans:2,
+        fact:"O₂ tiene un enlace doble (comparte 4 electrones) para que cada O tenga 8 electrones."},
+    ]
+  },
+  {
+    id:4, title:"Reacciones Químicas", sub:"Síntesis, descomposición y sustitución",
+    icon:"⚡", minScore:80,
+    questions:[
+      {type:"mc",q:"En una reacción de SÍNTESIS:",opts:["Un compuesto se separa","Dos sustancias se unen para formar una nueva","Una sustancia reemplaza a otra","Dos compuestos intercambian partes"],ans:1,
+        fact:"Síntesis: A + B → AB. Ejemplo: H₂ + O → H₂O (agua)"},
+      {type:"mc",q:"¿Qué tipo de reacción es: 2H₂O → 2H₂ + O₂?",opts:["Síntesis","Descomposición","Sustitución","Combustión"],ans:1,
+        fact:"Descomposición: AB → A + B. El agua se separa en hidrógeno y oxígeno con electricidad."},
+      {type:"mc",q:"En la combustión, el carbono siempre produce:",opts:["Agua","CO₂ y H₂O","Solo O₂","Nitrógeno"],ans:1,
+        fact:"Combustión completa: C + O₂ → CO₂. Si es incompleta, produce CO (monóxido, tóxico)."},
+      {type:"mc",q:"¿Qué indica el número delante de una fórmula (coeficiente)?",opts:["El número atómico","La cantidad de moléculas","La carga del ión","El período"],ans:1,
+        fact:"En '2H₂O', el 2 significa 2 moléculas de agua. Los subíndices indican átomos dentro."},
+      {type:"mc",q:"¿Cuál es un indicador visual de que ocurrió una reacción química?",opts:["El objeto se mueve","Cambio de color o formación de gas","La temperatura no cambia","El sabor igual"],ans:1,
+        fact:"Señales de reacción: cambio de color, gas, precipitado, cambio de temperatura, luz."},
+      {type:"match",q:"Une cada reacción con su tipo:",
+        pairs:[["Fe + S → FeS","Síntesis"],["CaCO₃ → CaO + CO₂","Descomposición"],["Zn + HCl → ZnCl₂ + H₂","Sustitución"],["CH₄ + O₂ → CO₂ + H₂O","Combustión"]],
+        fact:"Aprender a clasificar reacciones te ayuda a predecir qué productos se formarán."},
+      {type:"mc",q:"¿Qué es un reactivo?",opts:["El producto final","La sustancia que se forma","La sustancia que se transforma","El símbolo del elemento"],ans:2,
+        fact:"Reactivos → Productos. Los reactivos son lo que entra, los productos lo que se obtiene."},
+      {type:"mc",q:"¿Qué significa que una ecuación esté 'balanceada'?",opts:["Que es larga","Que tiene igual número de átomos a cada lado","Que todos los coeficientes son 1","Que ocurre rápido"],ans:1,
+        fact:"La ley de conservación de masa: los átomos no se crean ni se destruyen, se reordenan."},
+      {type:"mc",q:"CH₄ + 2O₂ → CO₂ + 2H₂O es una reacción de:",opts:["Síntesis","Descomposición","Combustión","Sustitución"],ans:2,
+        fact:"El metano (gas natural) se quema produciendo CO₂ y agua. Es combustión completa."},
+      {type:"mc",q:"¿Cuál es el catalizador en el cuerpo humano?",opts:["Glucosa","Sal","Enzimas","Agua"],ans:2,
+        fact:"Las enzimas aceleran reacciones sin consumirse. Son los catalizadores del metabolismo."},
+    ]
+  },
+  {
+    id:5, title:"Combinaciones Frecuentes", sub:"Agua, sal, ácidos y óxidos",
+    icon:"🧪", minScore:80,
+    questions:[
+      {type:"mc",q:"¿Cuál es la fórmula del agua?",opts:["HO","H₂O","H₂O₂","HO₂"],ans:1,
+        fact:"H₂O: 2 hidrógenos + 1 oxígeno. La molécula más importante para la vida."},
+      {type:"mc",q:"¿Cómo se llama H₂O₂?",opts:["Agua","Agua oxigenada","Ácido clorhídrico","Ozono"],ans:1,
+        fact:"H₂O₂ es el agua oxigenada. Se usa para desinfectar heridas. ¡Tiene un O de más!"},
+      {type:"mc",q:"¿Qué es NaCl?",opts:["Azúcar","Sal de mesa","Bicarbonato","Vinagre"],ans:1,
+        fact:"NaCl = Cloruro de sodio = sal de cocina. Ión Na⁺ + Ión Cl⁻."},
+      {type:"mc",q:"¿Cuál es la fórmula del dióxido de carbono?",opts:["CO","CO₂","C₂O","C₂O₂"],ans:1,
+        fact:"CO₂: 1 carbono + 2 oxígenos. Lo producimos al respirar y las plantas lo usan."},
+      {type:"mc",q:"¿Cuál de estos es un ácido?",opts:["NaOH","NaCl","HCl","H₂O"],ans:2,
+        fact:"HCl es el ácido clorhídrico, presente en tu estómago para digerir alimentos."},
+      {type:"mc",q:"¿Qué es NaOH?",opts:["Sal","Ácido","Base (hidróxido de sodio)","Agua"],ans:2,
+        fact:"NaOH (soda cáustica) es muy básico. Se usa en jabones y limpiadores."},
+      {type:"match",q:"Une cada fórmula con su nombre:",
+        pairs:[["H₂O","Agua"],["CO₂","Dióxido de carbono"],["NaCl","Sal de mesa"],["O₃","Ozono"]],
+        fact:"Estas son las moléculas más famosas en química. ¡Memorízalas bien!"},
+      {type:"mc",q:"El óxido de hierro (Fe₂O₃) es lo que conocemos como:",opts:["Bronce","Acero","Óxido / Herrumbre","Cromo"],ans:2,
+        fact:"La herrumbre es Fe₂O₃. Se forma cuando el hierro reacciona con agua y oxígeno."},
+      {type:"mc",q:"¿Qué compuesto hace que el vinagre sea ácido?",opts:["HCl","H₂SO₄","CH₃COOH","HNO₃"],ans:2,
+        fact:"CH₃COOH es el ácido acético. El vinagre tiene 5-8% de este ácido."},
+      {type:"mc",q:"Si mezclas un ácido con una base obtienes:",opts:["Otro ácido","Explosión","Sal + Agua","Solo calor"],ans:2,
+        fact:"Ácido + Base → Sal + Agua. Esto se llama reacción de neutralización."},
+    ]
+  }
+];
+
+const STATE_KEY = "quimiLingo_v1";
+let state = {
+  currentDay: 1,
+  unlockedDays: [1],
+  dayScores: {},
+  xp: 0
+};
+
+try {
+  const saved = localStorage.getItem(STATE_KEY);
+  if (saved) state = JSON.parse(saved);
+} catch(e){}
+
+function save(){
+  try{localStorage.setItem(STATE_KEY, JSON.stringify(state))}catch(e){}
+}
+
+let session = null; // active quiz session
+
+function render(){
+  const app = document.getElementById("app");
+  if(session){
+    app.innerHTML = renderQuiz();
+    attachQuizEvents();
+  } else {
+    app.innerHTML = renderHome();
+    attachHomeEvents();
+  }
+}
+
+function pct(score){return Math.round(score);}
+
+function renderHome(){
+  const xpPct = Math.min(100, (state.xp % 500)/5);
+  const daysBtns = DAYS.map(d=>{
+    const locked = !state.unlockedDays.includes(d.id);
+    const done = state.dayScores[d.id] !== undefined;
+    const score = state.dayScores[d.id];
+    let cls = "day-btn";
+    if(d.id === state.currentDay && !locked) cls += " active";
+    if(locked) cls += " locked";
+    if(done && score >= d.minScore) cls += " done";
+    const scoreLabel = done ? ` ${pct(score)}%` : "";
+    return `<button class="${cls}" data-day="${d.id}" ${locked?"disabled":""}>Día ${d.id}${scoreLabel}</button>`;
+  }).join("");
+
+  const day = DAYS.find(d=>d.id===state.currentDay);
+  const locked = !state.unlockedDays.includes(day.id);
+  const prevScore = state.dayScores[day.id];
+  const passed = prevScore !== undefined && prevScore >= day.minScore;
+
+  const scoreInfo = prevScore !== undefined
+    ? `<p style="margin:.5rem 0 0;font-size:.88rem;color:${passed?"#16a34a":"#dc2626"};font-weight:600;">${passed?"✓ Aprobado":"✗ No aprobado"}: ${pct(prevScore)}% (mínimo ${day.minScore}%)</p>`
+    : "";
+
+  const stars = DAYS.filter(d=>state.dayScores[d.id]>=d.minScore).length;
+
+  return `
+  <h2 class="sr-only">QuimiLingo — Aprende química en 5 días</h2>
+  <div class="header">
+    <div class="logo">Quimi<span>Lingo</span></div>
+    <div class="xp-bar-wrap"><div class="xp-bar" style="width:${xpPct}%"></div></div>
+    <div class="xp-label">⭐ ${state.xp} XP</div>
+  </div>
+  <div class="days">${daysBtns}</div>
+  <div class="card">
+    <div style="font-size:2.5rem;margin-bottom:.5rem">${day.icon}</div>
+    <div class="day-title">Día ${day.id}: ${day.title}</div>
+    <div class="day-sub">${day.sub}</div>
+    ${scoreInfo}
+    <p style="font-size:.85rem;color:#888;margin:.75rem 0 1rem;">Necesitas ≥${day.minScore}% para desbloquear el siguiente día (${day.questions.length} preguntas)</p>
+    <button class="btn" id="startBtn" ${locked?"disabled":""}>
+      ${locked?"🔒 Bloqueado": prevScore!==undefined?"🔄 Repetir lección":"▶ Comenzar"}
+    </button>
+  </div>
+  <div class="card" style="background:#f8f9ff;border:1.5px dashed #c0c4f0">
+    <div style="font-size:.8rem;color:#888;font-weight:600;letter-spacing:.05em;margin-bottom:.5rem">TU PROGRESO</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      ${DAYS.map(d=>{
+        const s=state.dayScores[d.id];
+        const ok=s!==undefined&&s>=d.minScore;
+        const tried=s!==undefined;
+        return `<div style="text-align:center">
+          <div style="font-size:1.5rem">${ok?"✅":tried?"❌":"⬜"}</div>
+          <div style="font-size:.7rem;color:#888">Día ${d.id}</div>
+        </div>`;
+      }).join("")}
+      <div style="text-align:center;margin-left:auto">
+        <div style="font-size:1.5rem;color:#f5a623">⭐ ${stars}/5</div>
+        <div style="font-size:.7rem;color:#888">días ok</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderQuiz(){
+  const {day, qi, answers, feedback, matchState, done} = session;
+  if(done) return renderResult();
+
+  const q = day.questions[qi];
+  const total = day.questions.length;
+  const dots = day.questions.map((_,i)=>{
+    let cls="prog-dot";
+    if(i<qi) cls+= answers[i]?" ok":" fail";
+    else if(i===qi) cls+=" current";
+    return `<div class="${cls}"></div>`;
+  }).join("");
+
+  let body="";
+  if(q.type==="mc"){
+    const sel = session.selected;
+    body=`<div class="options">
+      ${q.opts.map((o,i)=>{
+        let cls="opt";
+        if(feedback!==null){
+          if(i===q.ans) cls+=" correct";
+          else if(i===sel && i!==q.ans) cls+=" wrong";
+          cls+=" disabled";
+        } else if(i===sel) cls+=" selected";
+        return `<button class="${cls}" data-idx="${i}">${o}</button>`;
+      }).join("")}
+    </div>`;
+  } else if(q.type==="match"){
+    const {leftSel, rightSel, matched} = session.matchState;
+    const lefts = q.pairs.map(p=>p[0]);
+    const rights = shuffleArr([...q.pairs.map(p=>p[1])]);
+    session._rights = session._rights || rights;
+    const R = session._rights;
+    body=`<div class="match-area">
+      <div class="match-col">${lefts.map((l,i)=>{
+        const m=matched.find(m=>m.left===i);
+        let cls="match-item";
+        if(m) cls+=m.ok?" matched-ok":" matched-fail";
+        else if(leftSel===i) cls+=" sel";
+        return `<button class="${cls}" data-left="${i}" ${m?"disabled":""}>${l}</button>`;
+      }).join("")}</div>
+      <div class="match-col">${R.map((r,i)=>{
+        const m=matched.find(m=>m.rightVal===r);
+        let cls="match-item";
+        if(m) cls+=m.ok?" matched-ok":" matched-fail";
+        else if(rightSel===r) cls+=" sel";
+        return `<button class="${cls}" data-right="${i}" data-rval="${r}" ${m?"disabled":""}>${r}</button>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
+  const fbDiv = feedback!==null
+    ? `<div class="feedback ${feedback?"ok":"fail"} show">
+        ${feedback?"✓ ¡Correcto! ":"✗ No fue esa. "}<span style="font-weight:400">${q.fact}</span>
+       </div>`
+    : `<div class="feedback"></div>`;
+
+  const btnLabel = q.type==="mc"
+    ? (feedback===null?"Confirmar":"Siguiente →")
+    : (session.matchState.matched.length===q.pairs.length?"Siguiente →":"Empareja todos");
+
+  const btnDisabled = q.type==="mc" && session.selected===null && feedback===null;
+
+  return `
+  <div class="header">
+    <div class="logo" style="cursor:pointer" id="backBtn">← Quimi<span>Lingo</span></div>
+    <div class="xp-bar-wrap"><div class="xp-bar" style="width:${Math.min(100,(state.xp%500)/5)}%"></div></div>
+    <div class="xp-label">⭐ ${state.xp} XP</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <span style="font-size:.8rem;font-weight:700;color:#3b3bdb">${day.icon} Día ${day.id}: ${day.title}</span>
+      <span style="font-size:.82rem;color:#888">${qi+1} / ${total}</span>
+    </div>
+    <div class="prog">${dots}</div>
+    <div class="q-label">Pregunta ${qi+1}</div>
+    <div class="q-text">${q.q}</div>
+    ${body}
+    ${fbDiv}
+    <button class="btn" id="mainBtn" ${btnDisabled?"disabled":""}>
+      ${btnLabel}
+    </button>
+  </div>`;
+}
+
+function renderResult(){
+  const {day, answers} = session;
+  const correct = answers.filter(Boolean).length;
+  const total = day.questions.length;
+  const score = (correct/total)*100;
+  const passed = score >= day.minScore;
+  const stars = score>=90?"⭐⭐⭐":score>=70?"⭐⭐":"⭐";
+  const trophy = passed ? "🏆" : "💪";
+  const gained = correct*10;
+
+  return `
+  <div class="header">
+    <div class="logo">Quimi<span>Lingo</span></div>
+  </div>
+  <div class="card result">
+    <div class="trophy">${trophy}</div>
+    <div class="stars">${stars}</div>
+    <h2>${passed?"¡Día superado!":"¡Sigue intentando!"}</h2>
+    <div class="score-big">${pct(score)}%</div>
+    <div class="score-label">Mínimo requerido: ${day.minScore}%</div>
+    <p>${passed
+      ? `Respondiste ${correct} de ${total} correctamente. ¡Ganaste ${gained} XP!`
+      : `Respondiste ${correct} de ${total}. Necesitas al menos ${Math.ceil(day.minScore*total/100)} correctas. ¡Repite la lección!`
+    }</p>
+    ${passed && day.id<5 ? `<p style="color:#16a34a;font-weight:600;margin-bottom:1rem">🔓 ¡Día ${day.id+1} desbloqueado!</p>`:``}
+    <button class="btn" id="doneBtn">${passed && day.id<5?"Ir al Día "+(day.id+1)+" →":"Volver al menú"}</button>
+    ${passed?"":"<button class='btn secondary' id='retryBtn' style='margin-top:.5rem'>🔄 Repetir</button>"}
+  </div>`;
+}
+
+function attachHomeEvents(){
+  document.querySelectorAll(".day-btn:not([disabled])").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      state.currentDay = parseInt(btn.dataset.day);
+      save();
+      render();
+    });
+  });
+  const sb = document.getElementById("startBtn");
+  if(sb) sb.addEventListener("click", startQuiz);
+}
+
+function startQuiz(){
+  const day = DAYS.find(d=>d.id===state.currentDay);
+  session = {
+    day,
+    qi: 0,
+    answers: [],
+    selected: null,
+    feedback: null,
+    matchState: {leftSel:null, rightSel:null, matched:[]},
+    _rights: null,
+    done: false
+  };
+  render();
+}
+
+function attachQuizEvents(){
+  if(session.done){
+    const db = document.getElementById("doneBtn");
+    if(db) db.addEventListener("click", finishDay);
+    const rb = document.getElementById("retryBtn");
+    if(rb) rb.addEventListener("click", ()=>{session=null;startQuiz();});
+    return;
+  }
+  const back = document.getElementById("backBtn");
+  if(back) back.addEventListener("click",()=>{session=null;render();});
+
+  const q = session.day.questions[session.qi];
+  if(q.type==="mc"){
+    document.querySelectorAll(".opt").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        if(session.feedback!==null) return;
+        session.selected = parseInt(btn.dataset.idx);
+        render();
+        attachQuizEvents();
+      });
+    });
+  } else {
+    document.querySelectorAll(".match-item[data-left]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        session.matchState.leftSel = parseInt(btn.dataset.left);
+        tryMatch();
+      });
+    });
+    document.querySelectorAll(".match-item[data-rval]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        session.matchState.rightSel = btn.dataset.rval;
+        tryMatch();
+      });
+    });
+  }
+
+  const mb = document.getElementById("mainBtn");
+  if(mb) mb.addEventListener("click", handleMain);
+}
+
+function tryMatch(){
+  const ms = session.matchState;
+  if(ms.leftSel===null || ms.rightSel===null){
+    render(); attachQuizEvents(); return;
+  }
+  const q = session.day.questions[session.qi];
+  const correctRight = q.pairs[ms.leftSel][1];
+  const ok = ms.rightSel === correctRight;
+  ms.matched.push({left:ms.leftSel, rightVal:ms.rightSel, ok});
+  ms.leftSel=null; ms.rightSel=null;
+  render(); attachQuizEvents();
+
+  if(ms.matched.length===q.pairs.length){
+    // show fact
+    const allOk = ms.matched.every(m=>m.ok);
+    session.feedback = allOk;
+    const fb = document.querySelector(".feedback");
+    if(fb){
+      fb.className="feedback "+(allOk?"ok":"fail")+" show";
+      fb.innerHTML=(allOk?"✓ ¡Correcto! ":"✗ Algunos errores. ")+`<span style="font-weight:400">${q.fact}</span>`;
+    }
+    session.answers.push(allOk);
+    render(); attachQuizEvents();
+  }
+}
+
+function handleMain(){
+  const q = session.day.questions[session.qi];
+  if(q.type==="match"){
+    // next
+    nextQ();
+    return;
+  }
+  if(session.feedback===null){
+    // confirm
+    const ok = session.selected === q.ans;
+    session.feedback = ok;
+    session.answers.push(ok);
+    render(); attachQuizEvents();
+  } else {
+    nextQ();
+  }
+}
+
+function nextQ(){
+  session.qi++;
+  session.selected=null;
+  session.feedback=null;
+  session.matchState={leftSel:null,rightSel:null,matched:[]};
+  session._rights=null;
+  if(session.qi>=session.day.questions.length){
+    session.done=true;
+    // update state
+    const correct=session.answers.filter(Boolean).length;
+    const score=(correct/session.day.questions.length)*100;
+    const passed=score>=session.day.minScore;
+    state.dayScores[session.day.id]=score;
+    state.xp+=correct*10;
+    if(passed && session.day.id<5 && !state.unlockedDays.includes(session.day.id+1)){
+      state.unlockedDays.push(session.day.id+1);
+    }
+    save();
+  }
+  render(); attachQuizEvents();
+}
+
+function finishDay(){
+  const passed = state.dayScores[session.day.id]>=session.day.minScore;
+  if(passed && session.day.id<5){
+    state.currentDay = session.day.id+1;
+    save();
+  }
+  session=null;
+  render();
+}
+
+function shuffleArr(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+render();
+</script>
+</body>
+</html>
